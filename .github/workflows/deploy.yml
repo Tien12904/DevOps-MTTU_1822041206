@@ -1,0 +1,78 @@
+
+name: Deploy Website
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Lấy code về
+        uses: actions/checkout@v4
+
+      - name: Kiểm tra đủ file
+        run: |
+          test -f index.html || {
+            echo "Lỗi: Không tìm thấy index.html"
+            exit 1
+          }
+
+          test -f style.css || {
+            echo "Lỗi: Không tìm thấy style.css"
+            exit 1
+          }
+
+          test -f script.js || {
+            echo "Lỗi: Không tìm thấy script.js"
+            exit 1
+          }
+
+          echo "Đã có đủ 3 file cần thiết!"
+
+      - name: Kiểm tra thẻ title
+        run: |
+          if grep -Eiq '<title[^>]*>[^<]+</title>' index.html; then
+            echo "Đã tìm thấy thẻ title hợp lệ!"
+          else
+            echo "Lỗi: Thiếu thẻ title hoặc title rỗng!"
+            exit 1
+          fi
+
+  deploy:
+    name: deploy
+    needs: check
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Lấy code về
+        uses: actions/checkout@v4
+
+      - name: Cấu hình GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Đóng gói website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy website
+        id: deployment
+        uses: actions/deploy-pages@v4
